@@ -1,5 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from tensorflow.keras.models import Model
+from tensorflow.keras.layers import Input, Dense
+from tensorflow.keras.optimizers import Adam
 
 ## FUNCTIONS ##
 def euler(theta_n, omega_n, h, freq):
@@ -36,7 +39,40 @@ while i < t.size:
    i += 1 
 
 plt.plot(t,THETA)
+#plt.show()
+
+## AUTOENCODER ## 
+
+X = np.column_stack((THETA, OMEGA))
+
+#data normalization
+X_min, X_max = X.min(), X.max()
+X = (X - X_min) / (X_max - X_min)
+
+#autoencoder definition
+encoding_dim = 1 
+input_layer = Input(shape=(2,))
+encoded = Dense(encoding_dim, activation='relu')(input_layer)
+decoded = Dense(2, activation='sigmoid')(encoded)
+
+autoencoder = Model(input_layer, decoded)
+autoencoder.compile(optimizer=Adam(learning_rate=0.01), loss='mse')
+
+#autoencoder train
+autoencoder.fit(X, X, epochs=200, batch_size=10, verbose=1)
+
+#reconstruction
+X_reconstructed = autoencoder.predict(X)
+X_reconstructed = X_reconstructed * (X_max - X_min) + X_min  # Desnormalizar
+
+#results
+
+# Graficar resultados
+plt.figure(figsize=(10, 4))
+plt.plot(t, THETA, label='Theta original', linestyle='dashed')
+plt.plot(t, X_reconstructed[:, 0], label='Theta reconstruida', linestyle='solid')
+plt.legend()
+plt.xlabel("Tiempo (s)")
+plt.ylabel("Ángulo (rad)")
+plt.title("Reconstrucción del movimiento del péndulo con Autoencoder")
 plt.show()
-
-    
-
