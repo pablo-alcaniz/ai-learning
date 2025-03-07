@@ -88,3 +88,11 @@ class NeuralNetwork():
 
         return model_params
 
+    def backward_prop(self, model_params):
+        pass
+
+    def one_hot_encoder(self, train_labels):
+        Y = np.zeros((int(np.max(train_labels)+1), int(train_labels.shape[0])))
+        Y[train_labels, np.arange(train_labels.shape[0])] = 1                                       #tensorized function for performance: to see what is happening see test.ipynb
+
+        return Y
