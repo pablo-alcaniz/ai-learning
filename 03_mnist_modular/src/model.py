@@ -47,7 +47,7 @@ class NeuralNetwork():
         train_layer_dim, train_examples = train_data.shape                                          #shape of the train data tensor 
         model_params = {}                                                                           #init the dict where the parameters of the network will be stored
         for i in range(len(self.sizes)):                                                            #loop to define and random initialization of the parameters
-            model_params["b_"+str(i+1)] = np.random.rand(self.sizes[i],train_examples) - 0.5        #bias init
+            model_params["b_"+str(i+1)] = np.random.rand(self.sizes[i],1) - 0.5                     #bias init
             if i+1 == 1:
                 model_params["W_"+str(i+1)] = np.random.rand(self.sizes[i],train_layer_dim) - 0.5   #the first layer always depend on the dimension of the input data
             else:
@@ -71,20 +71,17 @@ class NeuralNetwork():
                 return (np.exp(Z) - np.exp(-Z)) / (np.exp(Z) + np.exp(-Z))
             if derivative is True:
                 return 1 - np.power((np.exp(Z) - np.exp(-Z)) / (np.exp(Z) + np.exp(-Z)), 2)
-        if func == "softmax":
+        if func == "softmax": #stable softmax
             if derivative is False:
-                return np.exp(Z)/sum(np.exp(Z))
+                Z_stable = Z - np.max(Z, axis=0, keepdims=True)
+                exp_Z = np.exp(Z_stable)
+                softmax_output = exp_Z / np.sum(exp_Z, axis=0, keepdims=True)
+                return softmax_output
             if derivative is True:
                 raise Exception("Softmax derivative its not implemented yet. Please use another.")
         else:
             raise Exception("Activation function not recognized")
 
-    def delta(self,i,j):        #kronecker delta
-        if i == j: 
-            return 1
-        else:
-            return 0
-        
     def forward_prop(self, model_params,train_data):
         for i in range(len(self.sizes)):
             if i+1 == 1:
@@ -108,13 +105,14 @@ class NeuralNetwork():
                     model_params["W_"+str(i+1)].T.dot(model_params["delta_"+str(i+1)]) * \
                         self.activation_func(model_params["Z_"+str(i)], self.activation_functions[i-1], derivative=True)
             if i == 1:
-                model_params["dW_"+str(i)] = model_params["delta_"+str(i)].dot(train_data.T)
+                model_params["dW_"+str(i)] = model_params["delta_"+str(i)].dot(train_data.T)/train_data.shape[1] #VERY IMPORTANT TO NORMALIZE dW WITH THE NUMBER OF PARAMETERS
             else:
-                model_params["dW_"+str(i)] = model_params["delta_"+str(i)].dot(model_params["A_"+str(i-1)].T)
+                model_params["dW_"+str(i)] = model_params["delta_"+str(i)].dot(model_params["A_"+str(i-1)].T)/train_data.shape[1]
             
-            model_params["db_"+str(i)] = model_params["delta_"+str(i)]
-        return model_params
+            model_params["db_"+str(i)] = np.mean(model_params["delta_"+str(i)], axis=1, keepdims=True) #we need to do this to acomodate the dimensions
 
+        return model_params
+    
     def one_hot_encoder(self, train_labels):        #tensorized function for performance: to see what is happening see test.ipynb
         Y = np.zeros((int(np.max(train_labels)+1), int(train_labels.shape[0])))
         train_labels = train_labels.astype(int)
@@ -126,7 +124,7 @@ class NeuralNetwork():
             for i in range(len(self.sizes)):
                 model_params["W_"+str(i+1)] = model_params["W_"+str(i+1)] - lr*model_params["dW_"+str(i+1)]
                 model_params["b_"+str(i+1)] = model_params["b_"+str(i+1)] - lr*model_params["db_"+str(i+1)]
-                return model_params
+            return model_params
         if optimizer == "adam": #adam optimizer
             model_params, adam_params = self.adam(model_params, adam_params, lr, iter)
             return model_params, adam_params
@@ -134,20 +132,18 @@ class NeuralNetwork():
             raise Exception("Optimizer not recognized")
 
     def adam(self, model_params, adam_params, lr, iter):
-        if iter == 1:
-            adam_params = self.adam_init(model_params)
         for i in range(len(self.sizes)):
             adam_params["m_W_"+str(i+1)] = self.adam_beta1*adam_params["m_W_"+str(i+1)] + (1-self.adam_beta1)*model_params["dW_"+str(i+1)]
-            adam_params["norm_m_W_"+str(i+1)] = adam_params["m_W_"+str(i+1)]/(1-self.adam_beta1)**iter
+            adam_params["norm_m_W_"+str(i+1)] = adam_params["m_W_"+str(i+1)]/(1-self.adam_beta1**iter)
 
             adam_params["m_b_"+str(i+1)] = self.adam_beta1*adam_params["m_b_"+str(i+1)] + (1-self.adam_beta1)*model_params["db_"+str(i+1)]
-            adam_params["norm_m_b_"+str(i+1)] = adam_params["m_b_"+str(i+1)]/(1-self.adam_beta1)**iter
+            adam_params["norm_m_b_"+str(i+1)] = adam_params["m_b_"+str(i+1)]/(1-self.adam_beta1**iter)
 
             adam_params["v_W_"+str(i+1)] = self.adam_beta2*adam_params["v_W_"+str(i+1)] + (1-self.adam_beta2)*(model_params["dW_"+str(i+1)])**2
-            adam_params["norm_v_W_"+str(i+1)] = adam_params["v_W_"+str(i+1)]/(1-self.adam_beta2)**iter
+            adam_params["norm_v_W_"+str(i+1)] = adam_params["v_W_"+str(i+1)]/(1-self.adam_beta2**iter)
 
             adam_params["v_b_"+str(i+1)] = self.adam_beta2*adam_params["v_b_"+str(i+1)] + (1-self.adam_beta2)*(model_params["db_"+str(i+1)])**2
-            adam_params["norm_v_b_"+str(i+1)] = adam_params["v_b_"+str(i+1)]/(1-self.adam_beta2)**iter
+            adam_params["norm_v_b_"+str(i+1)] = adam_params["v_b_"+str(i+1)]/(1-self.adam_beta2**iter)
 
             model_params["W_"+str(i+1)] = model_params["W_"+str(i+1)] - \
                 lr*adam_params["norm_m_W_"+str(i+1)]/(np.sqrt(adam_params["norm_v_W_"+str(i+1)])+self.adam_eps)
@@ -167,7 +163,7 @@ class NeuralNetwork():
     
     def precision(self, model_params, train_labels):
         model_prediction = np.argmax(model_params["A_"+str(len(self.sizes))], axis=0)
-        return np.mean(model_prediction == self.one_hot_encoder(train_labels))
+        return np.mean(model_prediction == train_labels)
         
         
     def train(self, epochs, lr, batch_size, train_type):
@@ -190,15 +186,14 @@ class NeuralNetwork():
                 model_params = self.backward_prop(model_params, train_data, train_labels)
                 if self.optimizer == "adam":
                     adam_params = self.adam_init(model_params)
-                    model_params = self.update_params(model_params, adam_params, lr, self.optimizer, iter)
+                    model_params, adam_params = self.update_params(model_params, adam_params, lr, self.optimizer, iter)
                     iter += 1
                 else:
                     adam_params = None
                     model_params = self.update_params(model_params, adam_params, lr, self.optimizer, iter)
-                if i % 20:
+                if i % 20 == 0:
                     print("Epoch: ", i)
                     print("Estimated precision: ", self.precision(model_params, train_labels))
-
             if train_type == "batch":
                 for j in range(batch_dim):
                     train_data_batch = train_data[:,int(j*batch_size):int((j+1)*batch_size)]
@@ -208,10 +203,10 @@ class NeuralNetwork():
                     if self.optimizer == "adam":
                         adam_params = self.adam_init(model_params)
                         model_params = self.update_params(model_params, adam_params, lr, self.optimizer, iter)
-                        iter =+ 1
+                        iter += 1
                     else:
                         model_params = self.update_params(model_params, adam_params is None, lr, self.optimizer, iter)
-                    if j % 20:
+                    if j % 20 == 0:
                         print("Epoch: ", i)
                         print("Batch; ", j,"/",batch_dim)
                         print("Estimated precision: ", self.precision(model_params, train_data_batch))
