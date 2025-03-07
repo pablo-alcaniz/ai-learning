@@ -4,8 +4,15 @@ import pandas as pd
 class NeuralNetwork():
 
     activation_functions = []       #Vector with the activation function desired for each layer in sizes: activation_function = ['relu', 'relu', 'sigmoid', ...]
-    epochs: int                     #epochs for the training
-    lr: float                       #Learning rate
+
+    optimizer: str
+
+    adam_beta1: float
+    adam_beta2: float
+    adam_eps: float
+
+    train_DATA_PATH: str
+    test_DATA_PATH: str                    
 
     def __init__(self, sizes):
         self.sizes = sizes      #sizes of the layers including outputs but excluding inputs               
@@ -111,6 +118,91 @@ class NeuralNetwork():
         Y = np.zeros((int(np.max(train_labels)+1), int(train_labels.shape[0])))
         Y[train_labels, np.arange(train_labels.shape[0])] = 1
         return Y
-    
+
+    def update_params(self, model_params, adam_params, lr, optimizer, iter):
+        if optimizer == "gd": #gradient descent
+            for i in range(len(self.sizes)):
+                model_params["W_"+str(i+1)] = model_params["W_"+str(i+1)] - lr*model_params["dW_"+str(i+1)]
+                model_params["b_"+str(i+1)] = model_params["b_"+str(i+1)] - lr*model_params["db_"+str(i+1)]
+                return model_params
+        if optimizer == "adam": #adam optimizer
+            model_params, adam_params = self.adam(model_params, adam_params, lr, iter)
+            return model_params, adam_params
+        else:
+            raise Exception("Optimizer not recognized")
+
+    def adam(self, model_params, adam_params, lr, iter):
+        if iter == 1:
+            adam_params = self.adam_init(model_params)
+        for i in range(len(self.sizes)):
+            adam_params["m_W_"+str(i+1)] = self.adam_beta1*adam_params["m_W_"+str(i+1)] + (1-self.adam_beta1)*model_params["dW_"+str(i+1)]
+            adam_params["norm_m_W_"+str(i+1)] = adam_params["m_W_"+str(i+1)]/(1-self.adam_beta1)**iter
+
+            adam_params["m_b_"+str(i+1)] = self.adam_beta1*adam_params["m_b_"+str(i+1)] + (1-self.adam_beta1)*model_params["db_"+str(i+1)]
+            adam_params["norm_m_b_"+str(i+1)] = adam_params["m_b_"+str(i+1)]/(1-self.adam_beta1)**iter
+
+            adam_params["v_W_"+str(i+1)] = self.adam_beta2*adam_params["v_W_"+str(i+1)] + (1-self.adam_beta2)*(model_params["dW_"+str(i+1)])**2
+            adam_params["norm_v_W_"+str(i+1)] = adam_params["v_W_"+str(i+1)]/(1-self.adam_beta2)**iter
+
+            adam_params["v_b_"+str(i+1)] = self.adam_beta2*adam_params["v_b_"+str(i+1)] + (1-self.adam_beta2)*(model_params["db_"+str(i+1)])**2
+            adam_params["norm_v_b_"+str(i+1)] = adam_params["v_b_"+str(i+1)]/(1-self.adam_beta2)**iter
+
+            model_params["W_"+str(i+1)] = model_params["W_"+str(i+1)] - \
+                lr*adam_params["norm_m_W_"+str(i+1)]/(np.sqrt(adam_params["norm_v_W_"+str(i+1)])+self.adam_eps)
+            model_params["b_"+str(i+1)] = model_params["b_"+str(i+1)] - \
+                lr*adam_params["norm_m_b_"+str(i+1)]/(np.sqrt(adam_params["norm_v_b_"+str(i+1)])+self.adam_eps)
+        return model_params, adam_params
+
+    def adam_init(self,model_params):
+        adam_params = {}
+        for i in range(len(self.sizes)):
+            adam_params["m_W_"+str(i+1)] = np.zeros_like(model_params["W_"+str(i+1)])
+            adam_params["v_W_"+str(i+1)] = np.zeros_like(model_params["W_"+str(i+1)])
+
+            adam_params["m_b_"+str(i+1)] = np.zeros_like(model_params["b_"+str(i+1)])
+            adam_params["v_b_"+str(i+1)] = np.zeros_like(model_params["b_"+str(i+1)])
+        return adam_params
+
+
+    def train(self, epochs, lr, batch_size, train_type):
+
+        train_data, train_labels, test_data, test_labels = self.data(self.train_DATA_PATH, self.test_DATA_PATH)
+
+        if train_type == "complete":            #model init
+            model_params = self.init_model(train_data)
+        if train_type == "batch":
+            batch_dim = train_data.shape[1] // batch_size
+            train_data_batch = train_data[:,int(1*batch_size):int((2)*batch_size)]
+            model_params = self.init_model(train_data_batch)
+
+        iter = 1
+        for i in range(epochs):
+
+            if train_data == "complete":
+                model_params = self.forward_prop(model_params, train_data)
+                model_params = self.backward_prop(model_params, train_data, train_labels)
+                if self.optimizer == "adam":
+                    adam_params = self.adam_init(model_params)
+                    model_params = self.update_params(model_params, adam_params, lr, self.optimizer, iter)
+                    iter += 1
+                else:
+                    model_params = self.update_params(model_params, adam_params is None, lr, self.optimizer, iter)
+
+            if train_data == "batch":
+                for j in range(batch_dim):
+                    train_data_batch = train_data[:,int(j*batch_size):int((j+1)*batch_size)]
+                    train_labels_batch = train_labels[int(j*batch_size):int((j+1)*batch_size)]
+                    model_params = self.forward_prop(model_params, train_data_batch)
+                    model_params = self.backward_prop(model_params, train_data_batch, train_labels_batch)
+                    if self.optimizer == "adam":
+                        adam_params = self.adam_init(model_params)
+                        model_params = self.update_params(model_params, adam_params, lr, self.optimizer, iter)
+                        iter =+ 1
+                    else:
+                        model_params = self.update_params(model_params, adam_params is None, lr, self.optimizer, iter)
+
+        return model_params
+                    
+            
 
 

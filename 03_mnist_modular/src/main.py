@@ -25,3 +25,15 @@ data, labels = model.data('src/data/mnist_train.csv')
 parametros = model.init_model(data)
 parametros = model.forward_prop(parametros, data)
 parametros = model.backward_prop(parametros, data, labels)
+model.optimizer = "adam"
+model.adam_beta1 = 0.9
+model.adam_beta2 = 0.999
+model.lr = 0.01
+model.adam_eps = 1E-8
+
+adam = model.adam_init(parametros)
+iter = 1
+while iter < 100:
+    parametros, adam = model.update_params(parametros, adam, model.lr, model.optimizer, iter)
+    print(iter)
+    iter += 1
