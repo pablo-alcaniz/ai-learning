@@ -20,7 +20,9 @@ class NeuralNetwork():
         train_data = np.transpose(train_data/train_data.max())      
         train_labels = train_data_raw[:,0]                          #take the labels for the training
 
-        if test_DATA_PATH is None:      
+        if test_DATA_PATH is None:
+            print("INFO: Data loaded correctly")
+            print("WARNING: Only train data loaded")   
             return train_data, train_labels                         #if user doesn't specifies a test set return the train data 
         else:
             test_data_raw = pd.read_csv(test_DATA_PATH)
@@ -29,37 +31,40 @@ class NeuralNetwork():
             test_data = test_data_raw[:,1:]
             test_data = np.transpose(test_data)
             test_labels = test_data_raw[:,0]
+            print("INFO: Data loaded correctly")
+            print("INFO: Train and test data loaded")    
             return train_data, train_labels, test_data, test_labels
     
     def init_model(self, train_data):
         train_layer_dim, train_examples = train_data.shape                                          #shape of the train data tensor 
         model_params = {}                                                                           #init the dict where the parameters of the network will be stored
         for i in range(len(self.sizes)):                                                            #loop to define and random initialization of the parameters
-            model_params["b_"+str(i)] = np.random.rand(self.sizes[i],train_examples) - 0.5          #bias init
-            if i == 1:
-                model_params["W_"+str(i)] = np.random.rand(self.sizes[i],train_layer_dim) - 0.5     #the first layer always depend on the dimension of the input data
+            model_params["b_"+str(i+1)] = np.random.rand(self.sizes[i],train_examples) - 0.5        #bias init
+            if i+1 == 1:
+                model_params["W_"+str(i+1)] = np.random.rand(self.sizes[i],train_layer_dim) - 0.5   #the first layer always depend on the dimension of the input data
             else:
-                model_params["W_"+str(i)] = np.random.rand(self.sizes[i],self.sizes[i-1]) - 0.5     #rest of the layers
+                model_params["W_"+str(i+1)] = np.random.rand(self.sizes[i],self.sizes[i-1]) - 0.5   #rest of the layers
+        print('INFO: Model parameters init correct')
         return model_params
 
-    def activation_func(Z, func, derivative=None):                                                  #a function that contains activation functions and their derivatives
+    def activation_func(self, Z, func, derivative=False):                                           #a function that contains activation functions and their derivatives
         if func == "relu":                                                                          #to activate the derivative functionallity activation_func(Z, "relu", derivative=True)
-            if derivative is None:
-                return max(0,Z)
+            if derivative is False:
+                return np.maximum(0,Z)
             if derivative is True:
                 return 1 if Z > 0 else 0
         if func == "sigmoid":
-            if derivative is None:
+            if derivative is False:
                 return 1.0 / (1 + np.exp(-Z))
             if derivative is True:
                 return 1.0 / (1 + np.exp(-Z)) * (1-1.0 / (1 + np.exp(-Z)))
         if func == "tanh":
-            if derivative is None:
+            if derivative is False:
                 return (np.exp(Z) - np.exp(-Z)) / (np.exp(Z) + np.exp(-Z))
             if derivative is True:
                 return 1 - np.power((np.exp(Z) - np.exp(-Z)) / (np.exp(Z) + np.exp(-Z)), 2)
         if func == "softmax":
-            if derivative is None:
+            if derivative is False:
                 return np.exp(Z)/sum(np.exp(Z))
             if derivative is True:
                 raise Exception("Softmax derivative its not implemented yet. Please use another.")
@@ -72,5 +77,14 @@ class NeuralNetwork():
         else:
             return 0
         
-    def forward_prop(self, model_params):
-        self.activation_functions
+    def forward_prop(self, model_params,train_data):
+        for i in range(len(self.sizes)):
+            if i+1 == 1:
+                model_params["Z_"+str(i+1)] = model_params["W_"+str(i+1)].dot(train_data) + model_params["b_"+str(i+1)]
+                model_params["A_"+str(i+1)] = self.activation_func(model_params["Z_"+str(i+1)], self.activation_functions[i], derivative=False)
+            else:
+                model_params["Z_"+str(i+1)] = model_params["W_"+str(i+1)].dot(model_params["A_"+str(i)]) + model_params["b_"+str(i+1)]
+                model_params["A_"+str(i+1)] = self.activation_func(model_params["Z_"+str(i+1)], self.activation_functions[i], derivative=False)
+
+        return model_params
+
