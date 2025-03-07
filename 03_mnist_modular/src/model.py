@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import time
 
 class NeuralNetwork():
 
@@ -29,7 +30,7 @@ class NeuralNetwork():
 
         if test_DATA_PATH is None:
             print("INFO: Data loaded correctly")
-            print("WARNING: Only train data loaded")   
+            print("WARNING: Only train data loaded")
             return train_data, train_labels                         #if user doesn't specifies a test set return the train data 
         else:
             test_data_raw = pd.read_csv(test_DATA_PATH)
@@ -116,6 +117,7 @@ class NeuralNetwork():
 
     def one_hot_encoder(self, train_labels):        #tensorized function for performance: to see what is happening see test.ipynb
         Y = np.zeros((int(np.max(train_labels)+1), int(train_labels.shape[0])))
+        train_labels = train_labels.astype(int)
         Y[train_labels, np.arange(train_labels.shape[0])] = 1
         return Y
 
@@ -162,11 +164,16 @@ class NeuralNetwork():
             adam_params["m_b_"+str(i+1)] = np.zeros_like(model_params["b_"+str(i+1)])
             adam_params["v_b_"+str(i+1)] = np.zeros_like(model_params["b_"+str(i+1)])
         return adam_params
-
-
+    
+    def precision(self, model_params, train_labels):
+        model_prediction = np.argmax(model_params["A_"+str(len(self.sizes))], axis=0)
+        return np.mean(model_prediction == self.one_hot_encoder(train_labels))
+        
+        
     def train(self, epochs, lr, batch_size, train_type):
+        tic = time.perf_counter()
 
-        train_data, train_labels, test_data, test_labels = self.data(self.train_DATA_PATH, self.test_DATA_PATH)
+        train_data, train_labels = self.data(self.train_DATA_PATH)
 
         if train_type == "complete":            #model init
             model_params = self.init_model(train_data)
@@ -178,7 +185,7 @@ class NeuralNetwork():
         iter = 1
         for i in range(epochs):
 
-            if train_data == "complete":
+            if train_type == "complete":
                 model_params = self.forward_prop(model_params, train_data)
                 model_params = self.backward_prop(model_params, train_data, train_labels)
                 if self.optimizer == "adam":
@@ -186,9 +193,13 @@ class NeuralNetwork():
                     model_params = self.update_params(model_params, adam_params, lr, self.optimizer, iter)
                     iter += 1
                 else:
-                    model_params = self.update_params(model_params, adam_params is None, lr, self.optimizer, iter)
+                    adam_params = None
+                    model_params = self.update_params(model_params, adam_params, lr, self.optimizer, iter)
+                if i % 20:
+                    print("Epoch: ", i)
+                    print("Estimated precision: ", self.precision(model_params, train_labels))
 
-            if train_data == "batch":
+            if train_type == "batch":
                 for j in range(batch_dim):
                     train_data_batch = train_data[:,int(j*batch_size):int((j+1)*batch_size)]
                     train_labels_batch = train_labels[int(j*batch_size):int((j+1)*batch_size)]
@@ -200,7 +211,23 @@ class NeuralNetwork():
                         iter =+ 1
                     else:
                         model_params = self.update_params(model_params, adam_params is None, lr, self.optimizer, iter)
+                    if j % 20:
+                        print("Epoch: ", i)
+                        print("Batch; ", j,"/",batch_dim)
+                        print("Estimated precision: ", self.precision(model_params, train_data_batch))
+                toc = time.perf_counter()
+                print("Epochs: ", epochs)
+                print("Learning rate: ", lr)
+                print("Optimizer: ", self.optimizer)
+                print("Final estimated model precision: ", self.precision(model_params,train_labels_batch))
+                print("Time of training: ", toc-tic)
 
+        toc = time.perf_counter()
+        print("Epochs: ", epochs)
+        print("Learning rate: ", lr)
+        print("Optimizer: ", self.optimizer)
+        print("Final estimated model precision: ", self.precision(model_params,train_labels))
+        print("Time of training: ", toc-tic)
         return model_params
                     
             
