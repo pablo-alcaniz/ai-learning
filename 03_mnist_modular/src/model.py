@@ -52,12 +52,12 @@ class NeuralNetwork():
             if derivative is False:
                 return np.maximum(0,Z)
             if derivative is True:
-                return 1 if Z > 0 else 0
+                return Z > 0
         if func == "sigmoid":
             if derivative is False:
                 return 1.0 / (1 + np.exp(-Z))
             if derivative is True:
-                return 1.0 / (1 + np.exp(-Z)) * (1-1.0 / (1 + np.exp(-Z)))
+                return 1.0 / (1 + np.exp(-Z)) * (1 - 1.0 / (1 + np.exp(-Z)))
         if func == "tanh":
             if derivative is False:
                 return (np.exp(Z) - np.exp(-Z)) / (np.exp(Z) + np.exp(-Z))
@@ -88,11 +88,29 @@ class NeuralNetwork():
 
         return model_params
 
-    def backward_prop(self, model_params):
-        pass
+    def backward_prop(self, model_params, train_data, train_labels):
+        for i in range(len(self.sizes), 0, -1):
+            if i == len(self.sizes):
+                if model_params["A_"+str(i)].shape == self.one_hot_encoder(train_labels).shape:
+                    model_params["delta_"+str(i)] = model_params["A_"+str(i)] - self.one_hot_encoder(train_labels)
+                else:
+                    raise Exception("Dimension of the last layer must be the same as the training labels")
+            else:
+                model_params["delta_"+str(i)] = \
+                    model_params["W_"+str(i+1)].T.dot(model_params["delta_"+str(i+1)]) * \
+                        self.activation_func(model_params["Z_"+str(i)], self.activation_functions[i-1], derivative=True)
+            if i == 1:
+                model_params["dW_"+str(i)] = model_params["delta_"+str(i)].dot(train_data.T)
+            else:
+                model_params["dW_"+str(i)] = model_params["delta_"+str(i)].dot(model_params["A_"+str(i-1)].T)
+            
+            model_params["db_"+str(i)] = model_params["delta_"+str(i)]
+        return model_params
 
-    def one_hot_encoder(self, train_labels):
+    def one_hot_encoder(self, train_labels):        #tensorized function for performance: to see what is happening see test.ipynb
         Y = np.zeros((int(np.max(train_labels)+1), int(train_labels.shape[0])))
-        Y[train_labels, np.arange(train_labels.shape[0])] = 1                                       #tensorized function for performance: to see what is happening see test.ipynb
-
+        Y[train_labels, np.arange(train_labels.shape[0])] = 1
         return Y
+    
+
+

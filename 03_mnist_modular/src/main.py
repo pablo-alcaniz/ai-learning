@@ -13,7 +13,7 @@ import os
 #train_data = np.transpose(train_data/train_data.max())
 #train_labels = train_data_raw[:,0]
 
-model = NeuralNetwork(sizes = [128, 60, 50, 128])
+model = NeuralNetwork(sizes = [128, 60, 50, 10])
 model.activation_functions = [
     "relu",
     "tanh",
@@ -21,6 +21,7 @@ model.activation_functions = [
     "softmax"
 ]
 
-data, _ = model.data('src/data/mnist_train.csv')
+data, labels = model.data('src/data/mnist_train.csv')
 parametros = model.init_model(data)
 parametros = model.forward_prop(parametros, data)
+parametros = model.backward_prop(parametros, data, labels)
