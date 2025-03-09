@@ -246,7 +246,7 @@ class NeuralNetwork():
             print("---Learning rate: ", lr)
             print("---Optimizer: ", self.optimizer)
             if self.test_DATA_PATH is not None:
-                print("---Model precision: ", self.test_model(model_params,test_data,test_labels))
+                print("---Model precision: ", self.test_full_model(model_params,test_data,test_labels))
             print("---Time of training: ", toc-tic,"s")
         return model_params
     
@@ -269,12 +269,31 @@ class NeuralNetwork():
 
         return model_params
     
-    def test_model(self, model_params, test_data, test_labels):
+    def test_full_model(self, model_params, test_data, test_labels):
         model_params = self.forward_prop(model_params, test_data)
         return self.precision(model_params,test_labels)
     
-    def plot_image(self, label, data, labels):
-        image = np.array(data[:,label]).reshape(int(np.sqrt(data.shape[0])),int(np.sqrt(data.shape[0])))
+    def plot_image(self, case, data, data_labels):
+        image = np.array(data[:,case]).reshape(int(np.sqrt(data.shape[0])),int(np.sqrt(data.shape[0])))
         plt.imshow(image, cmap='gray')
-        plt.title(f'Etiqueta: {labels[label]}')
-        plt.show() 
+        plt.title(f'Value: {data_labels[case]}')
+        plt.show()
+
+    def test_prediction(self, case, data, data_label, model_params):
+
+        if "A_"+str(len(self.sizes)) in model_params:
+            model_params.pop("A_"+str(len(self.sizes)))
+        
+        data_vector = np.zeros((len(data[:,case]),1))
+        for i in range(len(data[:,case])):
+            data_vector[i] = data[i,case]
+
+        model_params = self.forward_prop(model_params, data_vector) #it has to be pass as a vector because potato (some shit of broadcasting or idk waht)
+        model_prediction = np.argmax(model_params["A_"+str(len(self.sizes))], axis=0)
+        real_data = data_label[case]
+
+        self.plot_image(case, data, data_label)
+
+        print("Model Prediction: ", model_prediction)
+        print("Real value: ", real_data)
+        

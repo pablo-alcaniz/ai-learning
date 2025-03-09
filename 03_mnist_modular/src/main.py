@@ -13,7 +13,7 @@ nn.test_DATA_PATH = "src/data/mnist_test.csv"
 
 nn.activation_functions = [
     "relu",
-    "softmax"
+    "sigmoid"
 ]
 nn.adam_beta1 = 0.9
 nn.adam_beta2 = 0.999
@@ -27,9 +27,7 @@ nn.SAVE_NAME = "model-1"
 
 nn.save_model(params)
 
-nn.LOAD_DIR = "src/model"
-nn.LOAD_NAME = "model-1"
 
-data, labels, _, _ = nn.data()
 
-nn.plot_image(10, data, labels)
+
+
