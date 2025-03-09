@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import time
 import os
+import matplotlib.pyplot as plt
 
 class NeuralNetwork():
 
@@ -271,3 +272,9 @@ class NeuralNetwork():
     def test_model(self, model_params, test_data, test_labels):
         model_params = self.forward_prop(model_params, test_data)
         return self.precision(model_params,test_labels)
+    
+    def plot_image(self, label, data, labels):
+        image = np.array(data[:,label]).reshape(int(np.sqrt(data.shape[0])),int(np.sqrt(data.shape[0])))
+        plt.imshow(image, cmap='gray')
+        plt.title(f'Etiqueta: {labels[label]}')
+        plt.show() 

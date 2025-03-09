@@ -30,3 +30,6 @@ nn.save_model(params)
 nn.LOAD_DIR = "src/model"
 nn.LOAD_NAME = "model-1"
 
+data, labels, _, _ = nn.data()
+
+nn.plot_image(10, data, labels)
