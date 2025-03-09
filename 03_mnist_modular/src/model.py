@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import time
+import os
 
 class NeuralNetwork():
 
@@ -13,7 +14,15 @@ class NeuralNetwork():
     adam_eps: float
 
     train_DATA_PATH: str
-    test_DATA_PATH: str                    
+    test_DATA_PATH: str
+
+    batch_prints = 4 #Default batch prints
+
+    SAVE_DIR: str
+    SAVE_NAME: str
+
+    LOAD_DIR: str
+    LOAD_NAME: str                    
 
     def __init__(self, sizes):
         self.sizes = sizes      #sizes of the layers including outputs but excluding inputs               
@@ -175,7 +184,7 @@ class NeuralNetwork():
             model_params = self.init_model(train_data)
         if train_type == "batch":
             batch_dim = train_data.shape[1] // batch_size
-            train_data_batch = train_data[:,int(1*batch_size):int((2)*batch_size)]
+            train_data_batch = train_data[:,int(0*batch_size):int(batch_size)]
             model_params = self.init_model(train_data_batch)
 
         iter = 1
@@ -202,29 +211,44 @@ class NeuralNetwork():
                     model_params = self.backward_prop(model_params, train_data_batch, train_labels_batch)
                     if self.optimizer == "adam":
                         adam_params = self.adam_init(model_params)
-                        model_params = self.update_params(model_params, adam_params, lr, self.optimizer, iter)
+                        model_params, adam_params = self.update_params(model_params, adam_params, lr, self.optimizer, iter)
                         iter += 1
                     else:
-                        model_params = self.update_params(model_params, adam_params is None, lr, self.optimizer, iter)
-                    if j % 20 == 0:
+                        adam_params = None
+                        model_params = self.update_params(model_params, adam_params, lr, self.optimizer, iter)
+                    printable = max(1, batch_dim // self.batch_prints)
+                    if j % printable == 0:
                         print("Epoch: ", i)
                         print("Batch; ", j,"/",batch_dim)
-                        print("Estimated precision: ", self.precision(model_params, train_data_batch))
-                toc = time.perf_counter()
-                print("Epochs: ", epochs)
-                print("Learning rate: ", lr)
-                print("Optimizer: ", self.optimizer)
-                print("Final estimated model precision: ", self.precision(model_params,train_labels_batch))
-                print("Time of training: ", toc-tic)
+                        print("Estimated precision: ", self.precision(model_params, train_labels_batch))
+                
+        if train_type == "batch":
+            train_labels = train_labels_batch
 
         toc = time.perf_counter()
         print("Epochs: ", epochs)
         print("Learning rate: ", lr)
         print("Optimizer: ", self.optimizer)
         print("Final estimated model precision: ", self.precision(model_params,train_labels))
-        print("Time of training: ", toc-tic)
+        print("Time of training: ", toc-tic,"s")
         return model_params
-                    
-            
+    
+    def save_model(self, model_params):
+        os.makedirs(self.SAVE_DIR, exist_ok=True)
+        MODEL_SAVE_DIR = os.path.join(self.SAVE_DIR, self.SAVE_NAME)
+        os.makedirs(MODEL_SAVE_DIR, exist_ok=True)
 
+        for i in range(len(self.sizes)):
+            np.save(os.path.join(MODEL_SAVE_DIR,"W_"+str(i+1)+".npy"), model_params["W_"+str(i+1)])
+            np.save(os.path.join(MODEL_SAVE_DIR,"b_"+str(i+1)+".npy"), model_params["b_"+str(i+1)])
+
+    def load_model(self):
+        MODEL_LOAD_DIR = os.path.join(self.LOAD_DIR, self.LOAD_NAME)
+        model_params = {}
+
+        for i in range(len(self.sizes)):
+            model_params["W_"+str(i+1)] = np.load(os.path.join(MODEL_LOAD_DIR,"W_"+str(i+1)+".npy"))
+            model_params["b_"+str(i+1)] = np.load(os.path.join(MODEL_LOAD_DIR,"b_"+str(i+1)+".npy"))
+
+        return model_params
 
