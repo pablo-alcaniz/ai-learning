@@ -258,6 +258,7 @@ class NeuralNetwork():
         for i in range(len(self.sizes)):
             np.save(os.path.join(MODEL_SAVE_DIR,"W_"+str(i+1)+".npy"), model_params["W_"+str(i+1)])
             np.save(os.path.join(MODEL_SAVE_DIR,"b_"+str(i+1)+".npy"), model_params["b_"+str(i+1)])
+            np.save(os.path.join(MODEL_SAVE_DIR,"activation_funcs.npy"), self.activation_functions)
 
     def load_model(self):
         MODEL_LOAD_DIR = os.path.join(self.LOAD_DIR, self.LOAD_NAME)
@@ -266,7 +267,7 @@ class NeuralNetwork():
         for i in range(len(self.sizes)):
             model_params["W_"+str(i+1)] = np.load(os.path.join(MODEL_LOAD_DIR,"W_"+str(i+1)+".npy"))
             model_params["b_"+str(i+1)] = np.load(os.path.join(MODEL_LOAD_DIR,"b_"+str(i+1)+".npy"))
-
+            self.activation_functions = np.load(os.path.join(MODEL_LOAD_DIR,"activation_funcs.npy"))
         return model_params
     
     def test_full_model(self, model_params, test_data, test_labels):

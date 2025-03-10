@@ -16,7 +16,7 @@ nn.activation_functions = [
     "sigmoid"
 ]
 nn.adam_beta1 = 0.9
-nn.adam_beta2 = 0.999
+nn.adam_beta2 = 0.99
 nn.adam_eps = 1E-8
 nn.optimizer = "adam"
 nn.batch_prints = 5
