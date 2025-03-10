@@ -120,3 +120,61 @@ The `train` method of the `NeuralNetwork` class follows these steps:
 6. **Training Call Example**:
    ```python
    params = nn.train(epochs=1, lr=0.01, batch_size=128, train_type="batch", log=True)
+   ```
+
+---
+
+## Saving and Loading the Model
+
+- **Saving the Model**:
+  - Call `save_model(model_params)` to store parameters (weights, biases, and activation functions) in a designated directory:
+    ```python
+    nn.SAVE_DIR = "src/model"
+    nn.SAVE_NAME = "model-1"
+    nn.save_model(params)
+    ```
+
+- **Loading the Model**:
+  - Retrieve previously saved model parameters via `load_model()`:
+    ```python
+    model_params = nn.load_model()
+    ```
+
+---
+
+## Visualization and Single Predictions
+
+1. **Visualizing an Image (`plot_image`)**:
+   ```python
+   def plot_image(self, case, data, data_labels):
+       image = np.array(data[:, case]).reshape(28, 28)
+       plt.imshow(image, cmap='gray')
+       plt.title(f'Value: {data_labels[case]}')
+       plt.show()
+   ```
+
+2. **Testing a Single Prediction (`test_prediction`)**:
+   ```python
+   def test_prediction(self, case, data, data_label, model_params):
+       data_vector = data[:, case].reshape(-1, 1)
+       model_params = self.forward_prop(model_params, data_vector)
+       model_prediction = np.argmax(model_params["A_"+str(len(self.sizes))], axis=0)
+       real_data = data_label[case]
+       self.plot_image(case, data, data_label)
+       print("Model Prediction: ", model_prediction)
+       print("Real value: ", real_data)
+   ```
+
+---
+
+## Conclusion
+
+This modular neural network implementation for MNIST enables:
+- **Data loading and preprocessing**
+- **Flexible configuration**
+- **Training and evaluation**
+- **Visualization and testing**
+- **Saving and loading**
+
+This documentation provides a comprehensive guide to set up the model, run experiments, and extend it as needed. You are now ready to experiment, enhance your network, and achieve better results!
+
