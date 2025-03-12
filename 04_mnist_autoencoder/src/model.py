@@ -49,7 +49,7 @@ class NeuralNetwork():
             test_data_raw = test_data_raw.fillna(0)
             test_data_raw = np.array(test_data_raw) 
             test_data = test_data_raw[:,1:]
-            test_data = np.transpose(test_data)
+            test_data = np.transpose(test_data/test_data.max())
             test_labels = test_data_raw[:,0]
             print("INFO: Data loaded correctly")
             print("INFO: Train and test data loaded")    
@@ -105,11 +105,11 @@ class NeuralNetwork():
 
         return model_params
 
-    def backward_prop(self, model_params, train_data, train_labels):
+    def backward_prop(self, model_params, train_data):
         for i in range(len(self.sizes), 0, -1):
             if i == len(self.sizes):
-                if model_params["A_"+str(i)].shape == self.one_hot_encoder(train_labels).shape:
-                    model_params["delta_"+str(i)] = model_params["A_"+str(i)] - self.one_hot_encoder(train_labels)
+                if model_params["A_"+str(i)].shape == train_data.shape:
+                    model_params["delta_"+str(i)] = model_params["A_"+str(i)] - train_data
                 else:
                     raise Exception("Dimension of the last layer must be the same as the training labels")
             else:
@@ -124,15 +124,6 @@ class NeuralNetwork():
             model_params["db_"+str(i)] = np.mean(model_params["delta_"+str(i)], axis=1, keepdims=True) #we need to do this to acomodate the dimensions
 
         return model_params
-    
-    def one_hot_encoder(self, train_labels):        #tensorized function for performance: to see what is happening see test.ipynb
-        train_labels = train_labels.astype(int)
-        if int(np.max(train_labels)+1) < 10:        #WARNING: when batch size is short enough there a are a probabiliy that there is no 9, so the dimension result is <10, so it will raise an exception in backprop function
-            Y = np.zeros((int(10), int(train_labels.shape[0])))
-        else:
-            Y = np.zeros((int(np.max(train_labels)+1), int(train_labels.shape[0])))
-        Y[train_labels, np.arange(train_labels.shape[0])] = 1
-        return Y
 
     def update_params(self, model_params, adam_params, lr, optimizer, iter):
         if optimizer == "gd": #gradient descent
@@ -176,9 +167,9 @@ class NeuralNetwork():
             adam_params["v_b_"+str(i+1)] = np.zeros_like(model_params["b_"+str(i+1)])
         return adam_params
     
-    def precision(self, model_params, true_data):
-        model_prediction = np.argmax(model_params["A_"+str(len(self.sizes))], axis=0)
-        return np.mean(model_prediction == true_data)
+    def precision(self, model_params, true_data): #reconstruction loss
+        model_prediction = model_params["A_"+str(len(self.sizes))]
+        return np.mean(np.square(model_prediction - true_data))
         
         
     def train(self, epochs, lr, batch_size, train_type, log):
@@ -202,7 +193,7 @@ class NeuralNetwork():
 
             if train_type == "complete":
                 model_params = self.forward_prop(model_params, train_data)
-                model_params = self.backward_prop(model_params, train_data, train_labels)
+                model_params = self.backward_prop(model_params, train_data)
                 if self.optimizer == "adam":
                     adam_params = self.adam_init(model_params)
                     model_params, adam_params = self.update_params(model_params, adam_params, lr, self.optimizer, iter)
@@ -213,13 +204,14 @@ class NeuralNetwork():
                 if log == True:
                     if i % 20 == 0:
                         print("Epoch: ", i)
-                        print("Estimated precision: ", self.precision(model_params, train_labels))
+                        print("Reconstruction loss: ", self.precision(model_params, train_data))
+                        print("Estimated precision:", (1-self.precision(model_params, train_data)*100),"%")
             if train_type == "batch":
                 for j in range(batch_dim):
                     train_data_batch = train_data[:,int(j*batch_size):int((j+1)*batch_size)]
                     train_labels_batch = train_labels[int(j*batch_size):int((j+1)*batch_size)]
                     model_params = self.forward_prop(model_params, train_data_batch)
-                    model_params = self.backward_prop(model_params, train_data_batch, train_labels_batch)
+                    model_params = self.backward_prop(model_params, train_data_batch)
                     if self.optimizer == "adam":
                         adam_params = self.adam_init(model_params)
                         model_params, adam_params = self.update_params(model_params, adam_params, lr, self.optimizer, iter)
@@ -237,7 +229,8 @@ class NeuralNetwork():
                         if j % printable == 0:
                             print("Epoch: ", i)
                             print("Batch: ", j,"/",batch_dim)
-                            print("Estimated precision: ", self.precision(model_params, train_labels_batch))
+                            print("Reconstruction loss: ", self.precision(model_params, train_data_batch))
+                            print("Estimated precision:", 100*(1-self.precision(model_params, train_data_batch)),"%")
 
         toc = time.perf_counter()
         if log == True:
@@ -246,7 +239,7 @@ class NeuralNetwork():
             print("---Learning rate: ", lr)
             print("---Optimizer: ", self.optimizer)
             if self.test_DATA_PATH is not None:
-                print("---Model precision: ", self.test_full_model(model_params,test_data,test_labels))
+                print("---Model precision: ", 100*(1-self.test_full_model(model_params,test_data)),"%")
             print("---Time of training: ", toc-tic,"s")
         return model_params
     
@@ -270,9 +263,11 @@ class NeuralNetwork():
             self.activation_functions = np.load(os.path.join(MODEL_LOAD_DIR,"activation_funcs.npy"))
         return model_params
     
-    def test_full_model(self, model_params, test_data, test_labels):
+    def test_full_model(self, model_params, test_data):
+        if "A_"+str(len(self.sizes)) in model_params:
+            model_params.pop("A_"+str(len(self.sizes)))
         model_params = self.forward_prop(model_params, test_data)
-        return self.precision(model_params,test_labels)
+        return self.precision(model_params,test_data)
     
     def plot_image(self, case, data, data_labels):
         image = np.array(data[:,case]).reshape(int(np.sqrt(data.shape[0])),int(np.sqrt(data.shape[0])))
@@ -297,4 +292,24 @@ class NeuralNetwork():
 
         print("Model Prediction: ", model_prediction)
         print("Real value: ", real_data)
+
+    def plot_prediction(self, case, model_params, data, data_labels):
+        if "A_"+str(len(self.sizes)) in model_params:
+            model_params.pop("A_"+str(len(self.sizes)))
+
+        data_vector = np.zeros((len(data[:,case]),1))
+        for i in range(len(data[:,case])):
+            data_vector[i] = data[i,case]
+
+        model_params = self.forward_prop(model_params, data_vector)
+
+        model_pred = model_params["A_"+str(len(self.sizes))]
+
+        image = np.array(model_pred).reshape(int(np.sqrt(model_pred.shape[0])),int(np.sqrt(model_pred.shape[0])))        
+
+        plt.imshow(image, cmap='gray')
+        plt.title(f'Generated: {data_labels[case]}')
+        plt.show()
+
+        self.plot_image(case,data,data_labels)
         
