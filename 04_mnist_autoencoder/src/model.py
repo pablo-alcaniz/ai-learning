@@ -23,7 +23,9 @@ class NeuralNetwork():
     SAVE_NAME: str
 
     LOAD_DIR: str
-    LOAD_NAME: str                    
+    LOAD_NAME: str  
+
+    latent_index: int                  
 
     def __init__(self, sizes):
         self.sizes = sizes      #sizes of the layers including outputs but excluding inputs               
@@ -109,7 +111,7 @@ class NeuralNetwork():
         for i in range(len(self.sizes), 0, -1):
             if i == len(self.sizes):
                 if model_params["A_"+str(i)].shape == train_data.shape:
-                    model_params["delta_"+str(i)] = model_params["A_"+str(i)] - train_data
+                    model_params["delta_"+str(i)] = 0.5*(model_params["A_"+str(i)] - train_data)
                 else:
                     raise Exception("Dimension of the last layer must be the same as the training labels")
             else:
@@ -169,7 +171,7 @@ class NeuralNetwork():
     
     def precision(self, model_params, true_data): #reconstruction loss
         model_prediction = model_params["A_"+str(len(self.sizes))]
-        return np.mean(np.square(model_prediction - true_data))
+        return np.mean(model_prediction - true_data)
         
         
     def train(self, epochs, lr, batch_size, train_type, log):
@@ -312,4 +314,31 @@ class NeuralNetwork():
         plt.show()
 
         self.plot_image(case,data,data_labels)
+
+    def one_hot_encoder(self, user):        #tensorized function for performance: to see what is happening see test.ipynb
+        Y = np.zeros((10,1))
+        Y[user,0] = 1
+        return Y
+
+    def latent_pred(self, user, model_params):
+        user_vect = self.one_hot_encoder(user)
+        model_params = self.decoder(model_params, user_vect)
+
+        model_pred = model_params["A_"+str(len(self.sizes))]
+        image = np.array(model_pred).reshape(int(np.sqrt(model_pred.shape[0])),int(np.sqrt(model_pred.shape[0])))        
+
+        plt.imshow(image, cmap='gray')
+        plt.title(f'Prediction request: {user}')
+        plt.show()
+
+
+    def decoder(self, model_params, latent_vector):
+        for i in range(self.latent_index, len(self.sizes)):
+            if i == self.latent_index:
+                model_params["Z_"+str(i+1)] = model_params["W_"+str(i+1)].dot(latent_vector) + model_params["b_"+str(i+1)]
+                model_params["A_"+str(i+1)] = self.activation_func(model_params["Z_"+str(i+1)], self.activation_functions[i], derivative=False)
+            else: 
+                model_params["Z_"+str(i+1)] = model_params["W_"+str(i+1)].dot(model_params["A_"+str(i)]) + model_params["b_"+str(i+1)]
+                model_params["A_"+str(i+1)] = self.activation_func(model_params["Z_"+str(i+1)], self.activation_functions[i], derivative=False)
+        return model_params
         

@@ -2,19 +2,21 @@ from model import NeuralNetwork
 import numpy as np
 import pandas as pd
 import os
+import random
 
-sizes = [128, 64, 128, 784]
+sizes = [ 250, 10, 250, 784]
 
 nn = NeuralNetwork(sizes)
 
+nn.latent_index = 2
 
-nn.train_DATA_PATH = "data/mnist_train.csv"
-nn.test_DATA_PATH = "data/mnist_test.csv"
+nn.train_DATA_PATH = "src/data/mnist_train.csv"
+nn.test_DATA_PATH = "src/data/mnist_test.csv"
 
 nn.activation_functions = [
-    "relu",
-    "relu",
-    "relu",
+    "sigmoid",
+    "sigmoid",
+    "sigmoid",
     "sigmoid"
 ]
 
@@ -29,7 +31,7 @@ nn.SAVE_DIR = "model"
 nn.SAVE_NAME = "model-1"
 nn.save_model(params)
 
-
+nn.latent_pred(random.randint(0,9), params)
 
 
 
