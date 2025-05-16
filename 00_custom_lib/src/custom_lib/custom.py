@@ -1,6 +1,6 @@
 # custom lib with utilities
 """
-How to implement this library:
+How to implement this library in the desired working directory:
 $ uv pip install -e /home/pablo/dev/ai-learning/00_custom_lib
 $ uv add "custom_lib @ /home/pablo/dev/ai-learning/00_custom_lib/"
 
@@ -27,17 +27,3 @@ def clear_cache(model):
         model.reset_parameters()
 
 ####################################################################################################
-
-
-####################################################################################################
-def test1():
-    print("1")
-
-def test2():
-    print("2")
-
-def test3():
-    print("3")
-
-def test4():
-    print("Prueba correcta")
