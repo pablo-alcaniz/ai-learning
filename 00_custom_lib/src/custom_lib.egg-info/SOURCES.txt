@@ -1,8 +1,0 @@
-README.md
-pyproject.toml
-src/custom_lib/__init__.py
-src/custom_lib/custom.py
-src/custom_lib.egg-info/PKG-INFO
-src/custom_lib.egg-info/SOURCES.txt
-src/custom_lib.egg-info/dependency_links.txt
-src/custom_lib.egg-info/top_level.txt
