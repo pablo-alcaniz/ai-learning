@@ -6,7 +6,7 @@
 __pycache__
 *.npy
 *.csv
-.giignore
+.gitignore
 *.md
 PKG-INFO
 *.txt
