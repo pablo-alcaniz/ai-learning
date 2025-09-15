@@ -1,0 +1,16 @@
+*.toml
+*.lock
+.env
+.venv
+.python-version
+__pycache__
+*.npy
+*.csv
+.giignore
+*.md
+PKG-INFO
+*.txt
+*.gz
+*-ubyte
+*.png
+*.zip
